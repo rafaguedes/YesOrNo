@@ -1,0 +1,232 @@
+<!DOCTYPE HTML> 
+<html> 
+<head> 
+<title>PhoneGap</title> 
+
+<script type="text/javascript" charset="utf-8" src="js/cordova-2.2.0.js"></script> 
+<script type="text/javascript" charset="utf-8" src="js/jquery-1.8.2.min.js"></script> 
+
+<script type="text/javascript" charset="utf-8" src="js/GCMPlugin.js"></script>
+
+<script type="text/javascript" charset="utf-8" src="js/HelloPlugin.js"></script>
+
+<link type="text/css" rel="stylesheet" media="screen" href="css/estilo.css">
+</head> 
+
+<script>
+
+var documento;
+var sidVar;
+var query = location.href.substring((location.href.indexOf('?')+1), location.href.length);
+var inicio = false;
+
+gApp = new Array();
+gApp.deviceready = false;
+gApp.gcmregid = '';
+
+$(function()
+{
+	$(".processandoFundo").css("display","block");
+	$(".processandoFundo").css("width","480px");
+	$(".processandoFundo").css("height","848px");
+});
+
+if(location.href.indexOf('?') < 0) query = '';
+querysplit = query.split('&');
+query = new Array();
+
+for(var i = 0; i < querysplit.length; i++)
+{
+	var namevalue = querysplit[i].split('=');
+	namevalue[1] = namevalue[1].replace(/\+/g, ' ');
+	query[namevalue[0]] = unescape(namevalue[1]);
+}
+
+document.addEventListener("deviceready", onDeviceReady, false);
+
+function onDeviceReady() 
+{	
+
+	//============= PLUGIN COM O JAVA =======================================================================
+	window.yourFunction = function()
+	{     
+		alert("Sua pergunta foi enviada com sucesso!\n");
+		//location.href = "index.html";
+	} 
+	//========================================================================================================
+	
+	sidVar = query['sid'];	
+	inicio = query['inicio'];
+	
+	$.ajax({
+		url : "http://yesorno.pusku.com/funcoes.php?func=1",
+		dataType : "json",
+		type: "POST",
+		data: { latitude: "" ,longitude: "", sid: sidVar},
+		success : function(data)
+		{
+			if(data[0].status == "false")
+			{
+				$.ajax({
+					url : "http://yesorno.pusku.com/funcoes.php?func=5",
+					dataType : "json",
+					type: "POST",
+					data: { sid: sidVar },
+					success : function(data)
+					{
+						if(data[0].status == "true")
+						{
+							location.href = "resposta.html?sid=" + sidVar;
+						}
+						else
+						{
+							if(inicio)
+							{
+								$(".processandoFundo").fadeOut(500, function()
+								{	
+									$(".telaInicial").fadeIn(2000, function () {
+										$(".telaInicial").fadeOut(2000, function()
+										{
+											location.href = "principal.html?sid=" + sidVar;
+										});
+									});
+								});
+							}
+							else
+							{
+								location.href = "principal.html?sid=" + sidVar;
+							}
+						}
+					}
+				});
+			}
+			else
+			{
+				if(inicio)
+				{
+					$(".processandoFundo").fadeOut(500, function()
+					{	
+						$(".telaInicial").fadeIn(2000, function () {
+							$(".telaInicial").fadeOut(2000, function()
+							{
+								location.href = "principal.html?sid=" + sidVar;
+							});
+						});
+					});
+				}
+				else
+				{
+					location.href = "principal.html?sid=" + sidVar;
+				}
+			}
+		}
+	});
+
+	document.addEventListener("backbutton", function(){
+		location.href = "principal.html?sid=" + sidVar;
+	}, true);
+}
+
+//---------------------- FUNÇÕES CHAMADAS PELO ANDROID-------------------------------
+function successAgent(dados)
+{
+	alert("Pergunta enviada com sucesso!");
+	location.href = "resposta.html?sid=" + sidVar + "&pergunta=" + dados;
+}
+
+function errorAgent()
+{
+	alert("Nenhum usuário está próximo ao local que você deseja obter informação!\nTente mais tarde!");
+}
+
+function imprimeTeste(data)
+{
+	alert(data);
+}  
+
+function enviaSMS(sid,msg,tipo)
+{
+	//alert("SID Destino: " + sid + "\nMsg: " + msg + "\nTipo: " + tipo);
+	
+	$.ajax({
+		url : "http://yesorno.pusku.com/funcoes.php?func=12",
+		dataType : "json",
+		type: "POST",
+		data: { sid: sidVar, mensagem: msg },
+		success : function(data)
+		{
+			//alert('Ok');
+		}
+	});
+} 
+
+function recebePergunta(data)
+{
+	var dados = data.split(";"); 
+	
+	var nome = dados[0];
+	var pergunta = dados[1];
+	
+	location.href = "responder.html?sid=" + sidVar + "&nome=" + nome + "&pergunta=" + pergunta;
+}
+
+function recebeResposta(data)
+{
+	if(data == "0")
+	{
+		nao = nao + 1;
+	}
+	else
+	{
+		sim = sim + 1;
+	}
+	
+	porcentagemSim = (sim / (sim + nao)) * 100;
+	porcentagemNao = (nao / (sim + nao)) * 100;
+	
+	if(sim != 0)
+	{
+		$("#barraSim").css("width",porcentagemSim+"%");
+	}
+	else
+	{
+		$("#barraSim").css("width","0px");
+	}
+	
+	if(nao != 0)
+	{
+		$("#barraNao").css("width",porcentagemNao+"%");
+	}
+	else
+	{
+		$("#barraNao").css("width","0px");
+	}
+	
+	$("#qtdSim").html(sim + " respostas");
+	$("#qtdNao").html(nao + " respostas");
+}
+//-----------------------------------------------------------------------------------
+
+
+</script>
+
+
+<body>
+	
+    <div class="processandoFundo">
+    	
+        <div class="fundoPreto"></div>
+        
+    	<div class="textoProcessando">
+    		<p>Carregando configura&ccedil;&otilde;es...</p>
+        	<img style="clear:left;margin-top:20px;" src="images/ajax-loader.gif">
+        </div>
+    </div>
+    
+    <div class="telaInicial">
+    	<img src="images/telaInicial.jpg">
+    </div>
+
+</body> 
+
+</html>

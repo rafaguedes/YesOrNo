@@ -1,0 +1,319 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>PhoneGap</title> 
+
+<script type="text/javascript" charset="utf-8" src="js/cordova-2.2.0.js"></script> 
+<script type="text/javascript" charset="utf-8" src="js/jquery-1.8.2.min.js"></script> 
+
+<script type="text/javascript" charset="utf-8" src="js/CORDOVA_GCM_script.js"></script>
+<script type="text/javascript" charset="utf-8" src="js/GCMPlugin.js"></script>
+
+<script type="text/javascript" charset="utf-8" src="js/HelloPlugin.js"></script>
+
+<link type="text/css" rel="stylesheet" media="screen" href="css/estilo.css">
+</head> 
+
+<script type="text/javascript" charset="utf-8">
+
+var documento;
+var latitudeVar;
+var longitudeVar;
+var sidVar;
+var perguntas = new Array();
+var query = location.href.substring((location.href.indexOf('?')+1), location.href.length);
+
+if(location.href.indexOf('?') < 0) query = '';
+querysplit = query.split('&');
+query = new Array();
+
+for(var i = 0; i < querysplit.length; i++)
+{
+	var namevalue = querysplit[i].split('=');
+	namevalue[1] = namevalue[1].replace(/\+/g, ' ');
+	query[namevalue[0]] = unescape(namevalue[1]);
+}
+//alert("Para utilizar este programa você precisa estar conectado na internet!");
+
+document.addEventListener("deviceready", onDeviceReady, false);
+
+function onDeviceReady() 
+{
+	sidVar = query['sid'];	
+	
+	//ESPAÇO PREPARADO PARA RECEBER PUBLICIDADE/////////////////////////////////////////////////////
+	$(".publicidade").hide();
+	$.ajax({
+		url : "http://yesorno.pusku.com/funcoes.php?func=11",
+		dataType : "json",
+		type: "POST",
+		data: { sid: sidVar },
+		success : function(data)
+		{
+			$(".publicidade").html("");
+			$(".publicidade").html(data[0].conteudo);
+		}
+	});
+	////////////////////////////////////////////////////////////////////////////////////////////////
+		
+	$(".botaoAtualiza").click(function()
+	{
+		atualizaPosicao();
+	});
+	
+	$(".botao").click(function()
+	{	
+		location.href = "pergunta.html?inicio=false&sid=" + sidVar;
+	});
+	
+	navigator.geolocation.getCurrentPosition(carregaPosicao, naoCarregouPosicao);
+	
+	document.addEventListener("backbutton", function(){
+		
+		//location.href = "principal.html?inicio=false&sid=" + sidVar;
+		navigator.device.exitApp();
+		
+	}, true);
+	
+	var interval = setInterval(function() 
+	{
+		atualizar();
+	}, 20000);
+	
+}
+
+function atualizar()
+{
+	navigator.geolocation.getCurrentPosition(carregaPosicao, naoCarregouPosicao);
+	
+	//alert(window.InterfaceJavaScript.obtemAgentes());
+	//alert(window.InterfaceJavaScript.retornaNome());
+}
+
+function carregaPosicao(position) 
+{	
+	latitudeVar = position.coords.latitude;
+	longitudeVar = position.coords.longitude;
+
+	$.ajax({
+		url : "http://yesorno.pusku.com/funcoes.php?func=2",
+		dataType : "json",
+		type: "POST",
+		data: { latitude: latitudeVar, longitude: longitudeVar, sid: sidVar },
+		success : function(data)
+		{
+			$("#local").html(data[0].conteudo);	
+			
+			//ENVIA PORIÇÃO ATUAL PARA O AGENT-------------------------------
+			window.InterfaceJavaScript.setPosition(latitudeVar,longitudeVar);
+			//---------------------------------------------------------------
+	
+			$.ajax({
+				url : "http://yesorno.pusku.com/funcoes.php?func=8",
+				dataType : "json",
+				type: "POST",
+				data: { sid: sidVar , latitude: latitudeVar, longitude: longitudeVar},
+				success : function(data)
+				{
+					$(".perguntasPendentes ul").html("");
+
+					if(data.length > 0)
+					{
+						$(".perguntasPendentes").show();
+						var i;
+												
+						for(i = 0; i < data.length; i++)
+						{
+							$(".perguntasPendentes ul").append("<li><a href='responder.html?id=" + data[i].id + "&sid=" + sidVar + "'>" + data[i].pergunta + "</a></li>");
+						}
+						
+						$(".tituloPendentes").html("");
+						$(".tituloPendentes").html("Faça uma pergunta agora mesmo!");
+					}
+					else
+					{
+						$(".tituloPendentes").html("");
+						$(".tituloPendentes").html("Faça uma pergunta agora mesmo!");
+					}
+					
+					$(".carregandoConfiguracoes").fadeOut(500);
+					$(".processandoFundo").fadeOut(500);
+				}
+			});
+		}
+	});
+	
+}
+
+function naoCarregouPosicao(error) 
+{
+	latitude = null;
+	longitude = null;
+}
+
+function fail(evt) {
+	alert(evt.target.error.code);
+}
+
+function atualizaPosicao()
+{
+	$(".processandoFundo").fadeIn(500);
+	navigator.geolocation.getCurrentPosition(carregaPosicao, naoCarregouPosicao);
+}
+
+//---------------------- FUNÇÕES CHAMADAS PELO ANDROID-------------------------------
+function successAgent(dados)
+{
+	alert("Pergunta enviada com sucesso!");
+	location.href = "resposta.html?sid=" + sidVar + "&pergunta=" + dados;
+}
+
+function errorAgent()
+{
+	alert("Nenhum usuário está próximo ao local que você deseja obter informação!\nTente mais tarde!");
+}
+
+function imprimeTeste(data)
+{
+	alert(data);
+}  
+
+function enviaSMS(sid,msg,tipo)
+{
+	//alert("SID Destino: " + sid + "\nMsg: " + msg + "\nTipo: " + tipo);
+	
+	$.ajax({
+		url : "http://yesorno.pusku.com/funcoes.php?func=12",
+		dataType : "json",
+		type: "POST",
+		data: { sid: sidVar, mensagem: msg },
+		success : function(data)
+		{
+			//alert('Ok');
+		}
+	});
+} 
+
+function recebePergunta(data)
+{
+	var dados = data.split(";"); 
+	
+	var nome = dados[0];
+	var pergunta = dados[1];
+	
+	location.href = "responder.html?sid=" + sidVar + "&nome=" + nome + "&pergunta=" + pergunta;
+}
+
+function recebeResposta(data)
+{
+	if(data == "0")
+	{
+		nao = nao + 1;
+	}
+	else
+	{
+		sim = sim + 1;
+	}
+	
+	porcentagemSim = (sim / (sim + nao)) * 100;
+	porcentagemNao = (nao / (sim + nao)) * 100;
+	
+	if(sim != 0)
+	{
+		$("#barraSim").css("width",porcentagemSim+"%");
+	}
+	else
+	{
+		$("#barraSim").css("width","0px");
+	}
+	
+	if(nao != 0)
+	{
+		$("#barraNao").css("width",porcentagemNao+"%");
+	}
+	else
+	{
+		$("#barraNao").css("width","0px");
+	}
+	
+	$("#qtdSim").html(sim + " respostas");
+	$("#qtdNao").html(nao + " respostas");
+}
+//-----------------------------------------------------------------------------------
+
+
+</script>
+
+
+<body>
+	
+    <div class="carregandoConfiguracoes">
+        <div class="fundoPreto"></div>
+        
+    	<div class="textoProcessando">
+    		<p>Carregando configura&ccedil;&otilde;es...</p>
+        	<img style="clear:left;margin-top:20px;" src="images/ajax-loader.gif">
+        </div>
+    </div>
+    
+    <div class="processandoFundo">
+        <div class="fundoPreto"></div>
+        
+    	<div class="textoProcessando">
+    	<p>Obtendo sua posição...<br>Esta etapa pode levar algum tempo!</p>
+        <img style="clear:left;margin-top:20px;" src="images/ajax-loader.gif">
+        </div>
+    </div>
+    
+    <div class="conteudo">
+    	
+        <div class="alinhaAoCentro">
+        
+            <div class="logo">
+                <img src="images/logo.png">
+            </div>
+            
+            <div class="perguntasPendentes">
+                
+                <div class="tituloPendentes">
+                    Perguntas Pendentes
+                </div>
+                
+                <ul>
+                </ul>
+                
+            </div>
+            
+            <div class="botao">
+                
+                <img style="float:left" width="60" src="images/pergunte.png" >
+                
+                <h1>Faca uma pergunta!</h1>
+                
+            </div>
+            
+            <div class="botaoAtualiza">
+                
+                <img style="float:left" width="60" src="images/satelite.png" >
+                
+                <h1>Atualizar minha posicao!</h1>
+                
+            </div>
+            
+            <div class="proximidade">
+            	Você está próximo a <div id="local">Posição desatualizada!</div>
+            </div>
+            
+            <div class="publicidade">
+            </div>
+            
+        </div>
+        
+    </div>
+    
+</body> 
+
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html> 
+<head> 
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>PhoneGap</title> 
+
+<script type="text/javascript" charset="utf-8" src="js/cordova-2.2.0.js"></script> 
+<script type="text/javascript" charset="utf-8" src="js/jquery-1.8.2.min.js"></script> 
+
+<script type="text/javascript" charset="utf-8" src="js/CORDOVA_GCM_script.js"></script>
+<script type="text/javascript" charset="utf-8" src="js/GCMPlugin.js"></script>
+
+<script type="text/javascript" charset="utf-8" src="js/HelloPlugin.js"></script>
+
+<link type="text/css" rel="stylesheet" media="screen" href="css/estilo.css">
+</head> 
+
+<script type="text/javascript" charset="utf-8">
+
+var documento;
+var sidVar;
+var idPergunta;
+var query = location.href.substring((location.href.indexOf('?')+1), location.href.length);
+
+if(location.href.indexOf('?') < 0) query = '';
+querysplit = query.split('&');
+query = new Array();
+
+for(var i = 0; i < querysplit.length; i++)
+{
+	var namevalue = querysplit[i].split('=');
+	namevalue[1] = namevalue[1].replace(/\+/g, ' ');
+	query[namevalue[0]] = unescape(namevalue[1]);
+}
+
+document.addEventListener("deviceready", onDeviceReady, false);
+
+var porcentagemSim;
+var porcentagemNao;
+var sim;
+var nao;
+
+$(function() 
+{    
+	sidVar = query['sid'];
+		
+	nome = query['nome'];
+	pergunta = query['pergunta'];
+	
+	$(".pergunta").html(pergunta);
+	
+	sim = parseInt(0);
+	nao = parseInt(0);
+	
+	porcentagemSim = (sim / (sim + nao)) * 100;
+	porcentagemNao = (nao / (sim + nao)) * 100;
+	
+	if(sim != 0)
+	{
+		$("#barraSim").css("width",porcentagemSim+"%");
+	}
+	else
+	{
+		$("#barraSim").css("width","0px");
+	}
+	
+	if(nao != 0)
+	{
+		$("#barraNao").css("width",porcentagemNao+"%");
+	}
+	else
+	{
+		$("#barraNao").css("width","0px");
+	}
+	
+	$("#qtdSim").html(sim + " respostas");
+	$("#qtdNao").html(nao + " respostas");
+	
+	
+	
+	$(".botao").click(function()
+	{
+		 navigator.notification.confirm('Você tem certeza que deseja apagar está pergunta?\n\nSe você apagar ela deixará de aparecer para os demais usuários!', onConfirm, 'Confirmar Exclusão', 'Cancelar, Apagar');
+	});
+	
+	$(".botaoVoltar").click(function()
+	{
+		location.href = "principal.html?sid=" + sidVar;
+	});
+	
+	document.addEventListener("backbutton", function(){
+		location.href = "principal.html?inicio=false&sid=" + sidVar;
+	}, true);
+	
+});
+
+function onDeviceReady() 
+{		
+	/*$.ajax({
+		url : "http://yesorno.pusku.com/funcoes.php?func=4",
+		dataType : "json",
+		type: "POST",
+		data: { sid: sidVar },
+		success : function(data)
+		{
+			var i;
+			for(i = 0; i < data.length; i++)
+			{
+				$(".pergunta").html(data[i].pergunta);
+				
+				idPergunta = data[i].id;
+				
+				$.ajax({
+					url : "http://yesorno.pusku.com/funcoes.php?func=6",
+					dataType : "json",
+					type: "POST",
+					data: { id_pergunta: idPergunta },
+					success : function(data)
+					{								
+						var sim = parseInt(data[0].sim);
+						var nao = parseInt(data[0].nao);
+						
+						var porcentagemSim = (sim / (sim + nao)) * 100;
+						var porcentagemNao = (nao / (sim + nao)) * 100;
+						
+						if(sim != 0)
+						{
+							$("#barraSim").css("width",porcentagemSim+"%");
+						}
+						else
+						{
+							$("#barraSim").css("width","0px");
+						}
+						
+						if(nao != 0)
+						{
+							$("#barraNao").css("width",porcentagemNao+"%");
+						}
+						else
+						{
+							$("#barraNao").css("width","0px");
+						}
+						
+						$("#qtdSim").html(sim + " respostas");
+						$("#qtdNao").html(nao + " respostas");
+					}
+				});
+			}
+		}
+	});*/
+			
+}
+
+//---------------------- FUNÇÕES CHAMADAS PELO ANDROID-------------------------------
+function successAgent(dados)
+{
+	alert("Pergunta enviada com sucesso!");
+	location.href = "resposta.html?sid=" + sidVar + "&pergunta=" + dados;
+}
+
+function errorAgent()
+{
+	alert("Nenhum usuário está próximo ao local que você deseja obter informação!\nTente mais tarde!");
+}
+
+function imprimeTeste(data)
+{
+	alert(data);
+}  
+
+function enviaSMS(sid,msg,tipo)
+{
+	//alert("SID Destino: " + sid + "\nMsg: " + msg + "\nTipo: " + tipo);
+	
+	$.ajax({
+		url : "http://yesorno.pusku.com/funcoes.php?func=12",
+		dataType : "json",
+		type: "POST",
+		data: { sid: sidVar, mensagem: msg },
+		success : function(data)
+		{
+			//alert('Ok');
+		}
+	});
+}  
+
+function recebePergunta(data)
+{
+	var dados = data.split(";"); 
+	
+	var nome = dados[0];
+	var pergunta = dados[1];
+	
+	location.href = "responder.html?sid=" + sidVar + "&nome=" + nome + "&pergunta=" + pergunta;
+}
+
+function recebeResposta(data)
+{
+	if(data == "0")
+	{
+		nao = nao + 1;
+	}
+	else
+	{
+		sim = sim + 1;
+	}
+	
+	porcentagemSim = (sim / (sim + nao)) * 100;
+	porcentagemNao = (nao / (sim + nao)) * 100;
+	
+	if(sim != 0)
+	{
+		$("#barraSim").css("width",porcentagemSim+"%");
+	}
+	else
+	{
+		$("#barraSim").css("width","0px");
+	}
+	
+	if(nao != 0)
+	{
+		$("#barraNao").css("width",porcentagemNao+"%");
+	}
+	else
+	{
+		$("#barraNao").css("width","0px");
+	}
+	
+	$("#qtdSim").html(sim + " respostas");
+	$("#qtdNao").html(nao + " respostas");
+}
+//-----------------------------------------------------------------------------------
+</script>
+
+
+<body>
+	    
+    <div class="conteudo">
+    	
+        <div class="alinhaAoCentro">
+        
+            <div class="logo">
+                <img src="images/logo.png">
+            </div>
+            
+            <div class="perguntasPendentes" style="width: 413px;">
+                
+                <div class="tituloPendentes">
+                    Respostas para a pergunta
+                </div>
+                
+                <div class="pergunta"></div>
+				
+                <h1>Porcentagem de respostas <b>SIM</b></h1>
+                <div class="respostasSim">
+                	<div id="barraSim"></div>
+                    <div id="qtdSim"></div>
+                </div>
+                
+                <h1>Porcentagem de respostas <b>NÃO</b></h1>
+                <div class="respostasNao">
+                	<div id="barraNao"></div>
+                    <div id="qtdNao"></div>
+                </div>
+                
+                <div class="botaoVoltar" style="margin-left:20px; margin-bottom:20px; width:80%;">
+                
+                    <img style="float:left" width="60" src="images/voltar.png" >
+                    
+                    <h1>Voltar para a tela Inicial!</h1>
+                    
+                </div>
+                
+                <div class="botao" style="margin-left:20px; margin-bottom:20px; width:80%;">
+                
+                    <img style="float:left" width="60" src="images/pergunte.png" >
+                    
+                    <h1>Finalizar pergunta!</h1>
+                    
+                </div>
+                
+            </div>
+      
+        </div>
+        
+    </div>
+    
+</body> 
+
+</html>
